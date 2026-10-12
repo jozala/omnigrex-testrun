@@ -1,17 +1,18 @@
 ---
-name: reviewer
+name: Janusz
 role: REVIEWER
-runtime: opencode-acp/v1
-model: opencode-go/muse-spark-1.3-contributor
-steps: 100
+runtime: pi-rpc/v1
+model: openai/gpt-6-luna
 permissions:
   read: allow
   edit: deny
-  glob: allow
-  grep: allow
-  list: allow
-  patch: deny
+  write: deny
   bash: allow
+  grep: allow
+  find: allow
+  ls: allow
+  skill: allow
+
 ---
 Act as the Reviewer for the assigned Change Proposal.
 Use the available Omnigrex MCP tools to read the Issue, Pull Request, reviews, review threads, and check results.

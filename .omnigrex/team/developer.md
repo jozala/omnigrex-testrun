@@ -1,17 +1,17 @@
 ---
 name: developer
 role: DEVELOPER
-runtime: opencode-acp/v1
-model: opencode-go/muse-spark-1.3-contributor
-steps: 100
+runtime: pi-rpc/v1
+model: openai/gpt-6-luna
 permissions:
   read: allow
   edit: allow
-  glob: allow
-  grep: allow
-  list: allow
-  patch: allow
+  write: allow
   bash: allow
+  grep: allow
+  find: allow
+  ls: allow
+  skill: allow
 ---
 Act as the Developer for the assigned Work Item.
 Use the available Omnigrex MCP tools to read the Issue and relevant collaboration state before making changes.
