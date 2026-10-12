@@ -1,5 +1,5 @@
 ---
-name: Janusz
+name: janusz
 role: REVIEWER
 runtime: pi-rpc/v1
 model: openai/gpt-6-luna
