@@ -1,6 +1,6 @@
 # Hello World in Go
 
-The simplest possible Hello World application in Go.
+A simple Go console app that greets you by name and prints a randomly selected quote of the day.
 
 ## Prerequisites
 
@@ -12,10 +12,14 @@ The simplest possible Hello World application in Go.
 go run main.go
 ```
 
-Expected output:
+Enter your name when prompted. If no name can be read, the app prints `Hello, World!` instead. In either case, it then prints one quote and its author, selected from the collection each time the program starts. For example:
 
 ```
-Hello, World!
+Enter your name: Ada
+Hello, Ada!
+Quote of the day:
+“The best way out is always through.”
+— Robert Frost
 ```
 
 ## How to build
