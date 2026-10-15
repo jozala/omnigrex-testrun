@@ -15,7 +15,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 COMPOSE_FILE="${REPO_ROOT}/compose.integration.yml"
 
-export DATABASE_URL="${DATABASE_URL:-postgres://greetings_test:greetings_test@localhost:5433/greetings_test?sslmode=disable}"
+# Always target the dedicated Compose database provisioned by this script.
+# A pre-exported DATABASE_URL is intentionally ignored so integration tests
+# can never run against (and, via the schema test, drop tables in) an
+# external database used for normal tracked greetings.
+export DATABASE_URL="postgres://greetings_test:greetings_test@localhost:5433/greetings_test?sslmode=disable"
 
 cleanup() {
   echo "Stopping integration PostgreSQL..." >&2

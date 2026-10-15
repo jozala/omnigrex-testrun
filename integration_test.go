@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"sync"
@@ -263,31 +264,67 @@ func TestIntegrationConcurrentUpdates(t *testing.T) {
 	}
 }
 
+func replaceDatabaseName(t *testing.T, rawURL, dbName string) string {
+	t.Helper()
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatalf("failed to parse DATABASE_URL: %v", err)
+	}
+	u.Path = "/" + dbName
+	return u.String()
+}
+
+// provisionScratchDatabase creates a fresh, empty database on the same
+// PostgreSQL server and returns its connection URL. The caller owns cleanup
+// via the returned function. The schema test runs exclusively inside this
+// database so it never drops greeting_counts in the shared test database,
+// let alone in an external database.
+func provisionScratchDatabase(t *testing.T, ctx context.Context, adminConn *pgx.Conn, baseURL string) (string, func()) {
+	t.Helper()
+	scratchName := fmt.Sprintf("stest_%d_%d", time.Now().UnixNano(), nameCounter.Add(1))
+	if _, err := adminConn.Exec(ctx, `CREATE DATABASE "`+scratchName+`"`); err != nil {
+		t.Fatalf("failed to create scratch database: %v", err)
+	}
+	scratchURL := replaceDatabaseName(t, baseURL, scratchName)
+	cleanup := func() {
+		cctx, ccancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer ccancel()
+		// FORCE terminates any lingering scratch connections so the drop succeeds.
+		_, _ = adminConn.Exec(cctx, `DROP DATABASE IF EXISTS "`+scratchName+`" WITH (FORCE)`)
+	}
+	return scratchURL, cleanup
+}
+
 func TestIntegrationSchemaInitialization(t *testing.T) {
 	databaseURL := requireDatabaseURL(t)
 	ctx, cancel := testContext()
 	defer cancel()
-	conn := openTestConn(t, ctx, databaseURL)
+	adminConn := openTestConn(t, ctx, databaseURL)
 
-	if _, err := conn.Exec(ctx, `DROP TABLE IF EXISTS greeting_counts`); err != nil {
-		t.Fatalf("failed to drop table: %v", err)
+	scratchURL, cleanupScratch := provisionScratchDatabase(t, ctx, adminConn, databaseURL)
+	defer cleanupScratch()
+
+	scratchConn, err := pgx.Connect(ctx, scratchURL)
+	if err != nil {
+		t.Fatalf("failed to connect to scratch database: %v", err)
 	}
+	defer scratchConn.Close(context.Background())
 
-	// Table should now be missing.
+	// A freshly provisioned database must not contain the table yet.
 	var exists bool
-	err := conn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'greeting_counts')`).Scan(&exists)
+	err = scratchConn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'greeting_counts')`).Scan(&exists)
 	if err != nil {
 		t.Fatalf("failed to check table existence: %v", err)
 	}
 	if exists {
-		t.Fatal("expected greeting_counts table to be missing after DROP")
+		t.Fatal("expected greeting_counts table to be missing in a fresh database")
 	}
 
-	if err := ensureGreetingTable(ctx, conn); err != nil {
+	if err := ensureGreetingTable(ctx, scratchConn); err != nil {
 		t.Fatalf("ensureGreetingTable failed: %v", err)
 	}
 
-	err = conn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'greeting_counts')`).Scan(&exists)
+	err = scratchConn.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'greeting_counts')`).Scan(&exists)
 	if err != nil {
 		t.Fatalf("failed to re-check table existence: %v", err)
 	}
@@ -295,9 +332,9 @@ func TestIntegrationSchemaInitialization(t *testing.T) {
 		t.Fatal("expected greeting_counts table to exist after ensureGreetingTable")
 	}
 
-	// Verify the recreated table is usable.
+	// Verify the created table is usable.
 	name := uniqueName(t, "schema")
-	count, err := incrementGreetingCount(ctx, conn, name)
+	count, err := incrementGreetingCount(ctx, scratchConn, name)
 	if err != nil {
 		t.Fatalf("increment after schema init failed: %v", err)
 	}

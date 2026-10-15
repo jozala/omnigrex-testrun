@@ -4,7 +4,7 @@ A simple Go console app that greets you by name and prints a randomly selected q
 
 ## Prerequisites
 
-- [Go](https://go.dev/doc/install) 1.21 or later
+- [Go](https://go.dev/doc/install) 1.25 or later
 - [Docker](https://docs.docker.com/get-docker/) with Docker Compose (only required for PostgreSQL-backed tracking and integration tests)
 
 ## How to run
