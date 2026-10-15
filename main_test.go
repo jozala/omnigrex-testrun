@@ -83,16 +83,18 @@ func TestInteractiveName(t *testing.T) {
 	}
 }
 
-func TestInteractiveNameWithSpaces(t *testing.T) {
-	exit, stdout, _ := runApp(t, "Ada Lovelace\n")
-	if exit != 0 {
-		t.Fatalf("expected exit 0, got %d", exit)
-	}
-	if !strings.Contains(stdout, "Hello, Ada Lovelace!\n") {
-		t.Errorf("expected greeting for Ada Lovelace, got:\n%s", stdout)
-	}
-	if countQuotes(stdout) != 1 {
-		t.Errorf("expected exactly one quote, got:\n%s", stdout)
+func TestInteractiveMultiTokenFallsBackToWorld(t *testing.T) {
+	for _, input := range []string{"Ada Lovelace\n", "Ada\tLovelace\n"} {
+		exit, stdout, _ := runApp(t, input)
+		if exit != 0 {
+			t.Fatalf("input %q: expected exit 0, got %d", input, exit)
+		}
+		if !strings.Contains(stdout, "Hello, World!\n") {
+			t.Errorf("input %q: expected Hello, World! fallback preserving Scanln semantics, got:\n%s", input, stdout)
+		}
+		if countQuotes(stdout) != 1 {
+			t.Errorf("input %q: expected exactly one quote, got:\n%s", input, stdout)
+		}
 	}
 }
 

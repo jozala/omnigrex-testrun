@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"flag"
 	"fmt"
 	"io"
@@ -61,15 +60,11 @@ func run(in io.Reader, stdout, stderr io.Writer, args []string) int {
 		name = trimmed
 	} else {
 		fmt.Fprint(stdout, "Enter your name: ")
-		reader := bufio.NewReader(in)
-		line, err := reader.ReadString('\n')
-		trimmed := strings.TrimSpace(line)
-		if err != nil && len(line) == 0 {
-			fallback = true
-		} else if trimmed == "" {
+		var interactiveName string
+		if _, err := fmt.Fscanln(in, &interactiveName); err != nil {
 			fallback = true
 		} else {
-			name = trimmed
+			name = interactiveName
 		}
 	}
 
