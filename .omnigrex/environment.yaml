@@ -1,0 +1,7 @@
+version: 1
+image: ghcr.io/jozala/omnigrex-testrun/dev@sha256:b07656dfaa8e05664f41de4d4f386079cb6e3b725fd6cce0d5ed9dc96d9079bf
+platform: linux/amd64
+requirements:
+  - hardware-isolation
+  - tool-installation
+  - nested-containers
