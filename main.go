@@ -1,12 +1,16 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"math/rand"
 	"os"
 	"strings"
+	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type quote struct {
@@ -37,6 +41,7 @@ func run(in io.Reader, stdout, stderr io.Writer, args []string) int {
 	fs := flag.NewFlagSet("helloworld", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	nameFlag := fs.String("name", "", "name to greet without prompting")
+	trackFlag := fs.Bool("track", false, "track greeting counts in PostgreSQL")
 	if err := fs.Parse(args); err != nil {
 		return 2
 	}
@@ -68,15 +73,71 @@ func run(in io.Reader, stdout, stderr io.Writer, args []string) int {
 		}
 	}
 
-	if fallback {
-		fmt.Fprintln(stdout, "Hello, World!")
-	} else {
-		fmt.Fprintf(stdout, "Hello, %s!\n", name)
+	if !*trackFlag {
+		if fallback {
+			fmt.Fprintln(stdout, "Hello, World!")
+		} else {
+			fmt.Fprintf(stdout, "Hello, %s!\n", name)
+		}
+
+		printQuote(stdout)
+		return 0
 	}
 
+	return runTracked(stdout, stderr, name, fallback)
+}
+
+func printQuote(stdout io.Writer) {
 	selectedQuote := quotes[rand.Intn(len(quotes))]
 	fmt.Fprintln(stdout, "Quote of the day:")
 	fmt.Fprintf(stdout, "“%s”\n", selectedQuote.text)
 	fmt.Fprintf(stdout, "— %s\n", selectedQuote.author)
+}
+
+// runTracked handles the --track path: it requires PostgreSQL, initializes
+// the schema, increments the per-user counter (unless falling back to
+// Hello, World!), and prints the greeting with its count.
+func runTracked(stdout, stderr io.Writer, name string, fallback bool) int {
+	databaseURL := strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	if databaseURL == "" {
+		fmt.Fprintln(stderr, "error: --track requires DATABASE_URL to be set")
+		return 1
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	conn, err := pgx.Connect(ctx, databaseURL)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: failed to connect to database: %v\n", err)
+		return 1
+	}
+	defer conn.Close(context.Background())
+
+	if err := ensureGreetingTable(ctx, conn); err != nil {
+		fmt.Fprintf(stderr, "error: failed to initialize database: %v\n", err)
+		return 1
+	}
+
+	if fallback {
+		fmt.Fprintln(stdout, "Hello, World!")
+		printQuote(stdout)
+		return 0
+	}
+
+	count, err := incrementGreetingCount(ctx, conn, name)
+	if err != nil {
+		fmt.Fprintf(stderr, "error: failed to record greeting: %v\n", err)
+		return 1
+	}
+
+	fmt.Fprintf(stdout, "Hello, %s!\n", name)
+	if count == 1 {
+		fmt.Fprintln(stdout, "You've been greeted 1 time.")
+	} else {
+		fmt.Fprintf(stdout, "You've been greeted %d times.\n", count)
+	}
+	fmt.Fprintln(stdout, "")
+	printQuote(stdout)
 	return 0
 }
