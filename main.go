@@ -1,8 +1,13 @@
 package main
 
 import (
+	"bufio"
+	"flag"
 	"fmt"
+	"io"
 	"math/rand"
+	"os"
+	"strings"
 )
 
 type quote struct {
@@ -24,17 +29,59 @@ var quotes = [...]quote{
 }
 
 func main() {
-	fmt.Print("Enter your name: ")
+	os.Exit(run(os.Stdin, os.Stdout, os.Stderr, os.Args[1:]))
+}
+
+// run executes the greeting program and returns the process exit code.
+// It is separated from main so it can be tested without spawning a process.
+func run(in io.Reader, stdout, stderr io.Writer, args []string) int {
+	fs := flag.NewFlagSet("helloworld", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	nameFlag := fs.String("name", "", "name to greet without prompting")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+
+	nameSupplied := false
+	fs.Visit(func(f *flag.Flag) {
+		if f.Name == "name" {
+			nameSupplied = true
+		}
+	})
+
 	var name string
-	_, err := fmt.Scanln(&name)
-	if err != nil {
-		fmt.Println("Hello, World!")
+	fallback := false
+
+	if nameSupplied {
+		trimmed := strings.TrimSpace(*nameFlag)
+		if trimmed == "" {
+			fmt.Fprintln(stderr, "error: --name must not be empty or whitespace-only")
+			return 1
+		}
+		name = trimmed
 	} else {
-		fmt.Printf("Hello, %s!\n", name)
+		fmt.Fprint(stdout, "Enter your name: ")
+		reader := bufio.NewReader(in)
+		line, err := reader.ReadString('\n')
+		trimmed := strings.TrimSpace(line)
+		if err != nil && len(line) == 0 {
+			fallback = true
+		} else if trimmed == "" {
+			fallback = true
+		} else {
+			name = trimmed
+		}
+	}
+
+	if fallback {
+		fmt.Fprintln(stdout, "Hello, World!")
+	} else {
+		fmt.Fprintf(stdout, "Hello, %s!\n", name)
 	}
 
 	selectedQuote := quotes[rand.Intn(len(quotes))]
-	fmt.Println("Quote of the day:")
-	fmt.Printf("“%s”\n", selectedQuote.text)
-	fmt.Printf("— %s\n", selectedQuote.author)
+	fmt.Fprintln(stdout, "Quote of the day:")
+	fmt.Fprintf(stdout, "“%s”\n", selectedQuote.text)
+	fmt.Fprintf(stdout, "— %s\n", selectedQuote.author)
+	return 0
 }
