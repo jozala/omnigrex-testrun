@@ -3,7 +3,7 @@ name: janusz
 role: REVIEWER
 runtime: pi-rpc/v1
 model: opencode-go/deepseek-v4.1-flash
-thinking: xhigh
+thinking: high
 permissions:
   read: allow
   edit: deny
