@@ -1,0 +1,35 @@
+name: Probe historical tag permissions
+
+on:
+  workflow_dispatch:
+    inputs:
+      historical_sha:
+        description: Older main commit with different workflow contents and no direct branch or tag ref
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tag-permission-probe
+  cancel-in-progress: false
+
+jobs:
+  probe:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Check out the complete fixture history
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Compare current and historical tag creation
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HISTORICAL_SHA: ${{ inputs.historical_sha }}
+        run: bash scripts/probe-tag-permissions.sh
