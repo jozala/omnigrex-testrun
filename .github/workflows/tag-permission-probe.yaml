@@ -7,6 +7,7 @@ on:
         description: Older main commit with different workflow contents and no direct branch or tag ref
         required: true
         type: string
+        default: '1a721c0c179287122f31131d12acf0370a250e91'
 
 permissions:
   contents: read

@@ -7,6 +7,10 @@ It does not build images, create GitHub Releases, change repository settings, or
 
 ## Run
 
+The prepared historical fixture is commit `1a721c0c179287122f31131d12acf0370a250e91`.
+That commit introduced the workflow; the following commit changes its input default, making the fixture both historical and workflow-different from main.
+No branch or tag is created to retain the historical fixture directly.
+
 1. Open **Actions -> Probe historical tag permissions -> Run workflow**.
 2. Select branch **main** and use the supplied historical commit default.
 3. Run the workflow and inspect the job summary and the HTTP responses in **Compare current and historical tag creation**.
